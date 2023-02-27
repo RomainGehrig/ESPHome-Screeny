@@ -1,10 +1,56 @@
 api:
   port: 6053
 
-esphome:
+substitutions:
   name: screeny
+  id: screeny
+
+# From https://community.home-assistant.io/t/esphome-experience-with-m5stack-products/422813
+esphome:
+  name: $name
   platformio_options:
       board_build.flash_mode: dio
+  on_boot:
+    - priority: 600
+      then:
+        - logger.log: "Boot - LED red"
+        - light.turn_off: "${id}_led"
+        - delay: 500ms
+        - light.turn_on:
+            id: "${id}_led"
+            brightness: 100%
+            transition_length: 0.1s
+            red: 100%
+            green: 0%
+            blue: 0%
+    - priority: 240
+      then:
+        - logger.log: "Boot - LED yellow"
+        - light.turn_on:
+            id: "${id}_led"
+            brightness: 100%
+            transition_length: 0.1s
+            red: 90%
+            green: 74%
+            blue: 10%
+        - wait_until:
+            api.connected:
+        - logger.log: "Boot - LED green"
+        - light.turn_on:
+            id: "${id}_led"
+            brightness: 100%
+            transition_length: 0.1s
+            red: 66%
+            green: 100%
+            blue: 0%
+        - delay: 1s
+        - light.turn_on:
+            id: "${id}_led"
+            brightness: 15%
+            transition_length: 0.1s
+            red: 66%
+            green: 100%
+            blue: 0%
 
 logger:
 
@@ -53,6 +99,19 @@ sensor:
     id: co2_ppm
     entity_id: sensor.office_co2
 
+binary_sensor:
+  - platform: status
+    name: "Lightring Status"
+    id: system_status
+  - platform: gpio
+    pin:
+      number: GPIO3
+      mode:
+        input: true
+        pullup: true
+    id: btn
+    on_press:
+      - display.page.show_next: "${id}_screen"
 
 light:
   - platform: neopixelbus
@@ -60,7 +119,7 @@ light:
     variant: SK6812
     pin: 2
     num_leds: 1
-    id: "builtin_led"
+    id: "${id}_led"
     name: "Built-in LED"
     restore_mode: ALWAYS_ON
     method:
@@ -70,16 +129,27 @@ light:
 display:
   - platform: ssd1306_i2c
     model: 'SH1107_128x64'
+    id: "${id}_screen"
     rotation: 90
     flip_x: false
     flip_y: false
     offset_y: 96
     offset_x: 32
+    contrast: 20%
     external_vcc: true
     update_interval: 1.0s
-    lambda: |-
-      if (id(co2_ppm).has_state()) {
-        it.printf(5, 20, id(font1), "%.0f ppm", id(co2_ppm).state);
-      } else {
-        it.print(5, 20, id(font1), "Offline");
-      }
+    pages:
+      - lambda: |-
+          if (id(co2_ppm).has_state()) {
+            it.printf(5, 20, id(font1), "%.0f ppm", id(co2_ppm).state);
+          } else {
+            it.print(5, 20, id(font1), "N/A");
+          }
+          it.print(64, 50, id(font_small), TextAlign::CENTER, "Page 1");
+      - lambda: |-
+          if (id(system_status).state) {
+            it.print(5, 20, id(font1), "Online");
+          } else {
+            it.print(5, 20, id(font1), "Offline");
+          }
+          it.print(64, 50, id(font_small), TextAlign::CENTER, "Page 2");
