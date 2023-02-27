@@ -2,7 +2,9 @@ api:
   port: 6053
 
 esphome:
-  name: lightring
+  name: screeny
+  platformio_options:
+      board_build.flash_mode: dio
 
 logger:
 
@@ -11,6 +13,10 @@ esp32:
   variant: esp32c3
   framework:
     type: arduino
+
+external_components:
+  - source: github://bekriebel/esphome@sh1107_fix
+    components: [ ssd1306_base, ssd1306_i2c ]
 
 font:
   - file: 'fonts/PragmataPro.ttf'
@@ -22,9 +28,8 @@ font:
     size: 12
 
 i2c:
-  scl: 4
-  sda: 5
-  frequency: 400kHz
+  scl: 18
+  sda: 19
 
 wifi:
   ssid: !secret wifi_ssid
@@ -43,34 +48,13 @@ text_sensor:
       name: ESP Connected SSID
       id: wifi_ssid
 
+sensor:
+  - platform: homeassistant
+    id: co2_ppm
+    entity_id: sensor.office_co2
 
-binary_sensor:
-  - platform: status
-    name: "Lightring Status"
-    id: system_status
-  - platform: gpio
-    pin:
-      number: GPIO3
-      mode:
-        input: true
-        pullup: true
-    id: btn
-    filters:
-      - delayed_on: 10ms
-    on_click:
-      min_length: 750ms
-      max_length: 3000ms
-      then:
-        - light.toggle: builtin_led
 
 light:
-  - platform: neopixelbus
-    type: GRBW
-    variant: WS2812
-    pin: 8
-    num_leds: 24
-    id: ring_led
-    name: "LED ring"
   - platform: neopixelbus
     type: GRB
     variant: SK6812
@@ -78,15 +62,24 @@ light:
     num_leds: 1
     id: "builtin_led"
     name: "Built-in LED"
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ALWAYS_ON
     method:
       type: esp32_rmt
       channel: 0
 
 display:
   - platform: ssd1306_i2c
-    model: "SH1107 128x64"
-    address: 0x3C
-    #rotation: 90°
+    model: 'SH1107_128x64'
+    rotation: 90
+    flip_x: false
+    flip_y: false
+    offset_y: 96
+    offset_x: 32
+    external_vcc: true
+    update_interval: 1.0s
     lambda: |-
-      it.print(0, 17, id(font_small), TextAlign::BASELINE_LEFT, "Online");
+      if (id(co2_ppm).has_state()) {
+        it.printf(5, 20, id(font1), "%.0f ppm", id(co2_ppm).state);
+      } else {
+        it.print(5, 20, id(font1), "Offline");
+      }
