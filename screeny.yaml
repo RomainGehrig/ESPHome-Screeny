@@ -60,6 +60,7 @@ esp32:
   framework:
     type: arduino
 
+# Fix from https://github.com/esphome/issues/issues/2913
 external_components:
   - source: github://bekriebel/esphome@sh1107_fix
     components: [ ssd1306_base, ssd1306_i2c ]
@@ -76,6 +77,7 @@ font:
 i2c:
   scl: 18
   sda: 19
+  frequency: 400kHz
 
 wifi:
   ssid: !secret wifi_ssid
