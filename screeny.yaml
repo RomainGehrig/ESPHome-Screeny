@@ -80,6 +80,8 @@ i2c:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  power_save_mode: HIGH
+  fast_connect: true
 
 ota:
   safe_mode: true
