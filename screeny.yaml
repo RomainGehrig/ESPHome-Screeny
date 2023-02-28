@@ -100,6 +100,18 @@ sensor:
   - platform: homeassistant
     id: co2_ppm
     entity_id: sensor.office_co2
+    on_value:
+      then:
+        - lambda: |-
+            float co2 = std::min(float(1800), x);
+            auto t = (co2-440)/(1800 - 440);
+            auto interpolated = ESPHSVColor(uint8_t((1-t)*96), 255, 32);
+            auto inter_rgb = interpolated.to_rgb();
+
+            auto call = id(${id}_led).turn_on();
+            call.set_rgb(inter_rgb.red / 255.0, inter_rgb.green / 255.0, inter_rgb.blue / 255.0);
+            call.set_brightness(0.3);
+            call.perform();
 
 binary_sensor:
   - platform: status
